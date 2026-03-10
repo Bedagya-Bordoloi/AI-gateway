@@ -1,123 +1,126 @@
-AI Gateway
+# AI Gateway
 
 A production-grade, high-performance proxy server for Large Language Models (LLMs) built to manage API costs, provide deep observability, and implement intelligent semantic caching.
 
-Lumina AI Gateway sits between your application and AI providers (like Google Gemini), offering a centralized control plane for all AI traffic.
+**AI Gateway** sits between your application and AI providers (like Google Gemini), offering a centralized control plane for all AI traffic.
 
-🚀 Key Features
-🧠 Semantic Caching
+## 🚀 Key Features
 
-Utilizes a local embedding model (all-MiniLM-L6-v2) and Qdrant Vector Database to identify semantically similar queries.
+### 🧠 Semantic Caching
+Utilizes a local embedding model (`all-MiniLM-L6-v2`) and **Qdrant** Vector Database to identify semantically similar queries.
 
-Impact: If a user asks a question similar to one already in the cache, the Gateway returns the answer instantly (sub-50ms) with zero external API cost.
+- **Impact**: If a user asks a question similar to one already in the cache, the Gateway returns the answer instantly (**sub-50ms**) with **zero external API cost**.
 
-📊 Cost & Usage Observability
+### 📊 Cost & Usage Observability
+Every transaction is tracked with precision. Using **Prisma ORM** and **PostgreSQL**, the gateway logs:
 
-Every transaction is tracked with precision. Using Prisma ORM and PostgreSQL, the gateway logs:
+- Token counts (Input / Output)
+- Exact cost per request based on model pricing
+- Latency measurements
+- Cache hit / miss status
 
-Token counts (Input/Output).
+### ⚡ Real-time Streaming (SSE)
+Full support for Server-Sent Events (SSE).  
+The gateway:
 
-Exact cost per request based on model pricing.
+- intercepts the stream from Gemini
+- passes it to the frontend for a "typing" effect
+- simultaneously buffers the full response
+- saves it to cache + database once complete
 
-Latency measurements.
+### 🛡️ Infrastructure & Performance
 
-Cache hit/miss status.
+- **Fastify** Backend – low-overhead Node.js framework optimized for high-throughput proxies
+- **Redis** Rate Limiting – sliding-window limiter to prevent abuse and control spend
+- **Docker** Orchestration – cleanly manages PostgreSQL, Redis, and Qdrant instances
 
-⚡ Real-time Streaming (SSE)
+## 🛠️ Tech Stack
 
-Full support for Server-Sent Events (SSE). The gateway intercepts the stream from Gemini, passes it to the frontend for a "typing" effect, while simultaneously buffering the full response to save to the cache and database once complete.
+| Layer          | Technologies                                      |
+|----------------|---------------------------------------------------|
+| Frontend       | Next.js 14, Tailwind CSS, Recharts, Lucide React  |
+| Backend        | Fastify (TypeScript), Prisma ORM, Dotenv          |
+| AI Engine      | Google Gemini AI SDK, Transformers.js (local)     |
+| Infrastructure | PostgreSQL, Redis, Qdrant, Docker Desktop         |
 
-🛡️ Infrastructure & Performance
+## 🏗️ System Architecture
 
-Fastify Backend: A low-overhead Node.js framework optimized for high-throughput proxies.
+1. **Request**  
+   Frontend → `/v1/chat` → Gateway
 
-Redis Rate Limiting: Prevents API abuse and controls spend using a sliding-window rate limiter.
+2. **Embedding**  
+   Backend uses local CPU model → 384-dim vector
 
-Docker Orchestration: Seamlessly manages PostgreSQL, Redis, and Qdrant instances.
+3. **Vector Search**  
+   Gateway queries Qdrant for vectors with **>0.90** similarity  
+   - **Hit** → return cached text immediately  
+   - **Miss** → route to Gemini 1.5 Flash
 
-🛠️ Tech Stack
+4. **Streaming**  
+   Response streams to user  
+   Gateway buffers text in background
 
-Frontend: Next.js 14, Tailwind CSS, Recharts (Analytics), Lucide React.
+5. **Logging**  
+   On completion → save full interaction + cost data to PostgreSQL
 
-Backend: Fastify (TypeScript), Prisma ORM, Dotenv.
+## 🚦 Getting Started
 
-AI Engine: Google Gemini AI SDK, Transformers.js (Local Inference).
+### 1. Prerequisites
 
-Infrastructure: PostgreSQL (Logs), Redis (Rate Limiting), Qdrant (Vector Store), Docker Desktop.
+- Node.js v18 or newer
+- Docker Desktop
+- Google Gemini API Key [](https://makersuite.google.com/)
 
-🏗️ System Architecture
+### 2. Installation
 
-Request: Frontend sends a chat request to the Gateway via /v1/chat.
-
-Embedding: Backend uses a local CPU-bound model to turn the prompt into a 384-dimension vector.
-
-Vector Search: Gateway queries Qdrant for vectors with >0.90 similarity.
-
-Hit: Return cached text immediately.
-
-Miss: Route the request to Gemini 1.5 Flash.
-
-Streaming: The response streams to the user; the Gateway buffers the text in the background.
-
-Logging: On completion, the Gateway saves the full interaction and cost data to PostgreSQL.
-
-🚦 Getting Started
-1. Prerequisites
-
-Node.js (v18+)
-
-Docker Desktop
-
-Gemini API Key (Get it here)
-
-2. Installation
-code
-Bash
-download
-content_copy
-expand_less
-# Install dependencies for root, backend, and frontend
+```bash
+# Install dependencies (root + backend + frontend)
 npm run setup
-3. Environment Setup
+```
 
-Create a .env file in backend/.env:
+### 3. Environment Setup
 
-code
-Env
-download
-content_copy
-expand_less
+Create a file named `.env` inside the `backend/` folder with the following content:
+
+```env
+# PostgreSQL connection string
 DATABASE_URL="postgresql://user:password@127.0.0.1:5433/gateway"
+
+# Redis connection
 REDIS_URL="redis://127.0.0.1:6379"
+
+# Qdrant vector database
 QDRANT_URL="http://localhost:6333"
+
+# Google Gemini API key (required)
 GEMINI_API_KEY=YOUR_GEMINI_KEY_HERE
-4. Run Infrastructure
-code
-Bash
-download
-content_copy
-expand_less
-# Start Postgres, Redis, and Qdrant
+```
+
+### 4. Run Infrastructure
+
+```bash
+# Start Postgres, Redis, Qdrant
 docker compose up -d
 
-# Initialize Database tables
+# Initialize database tables
 cd backend
 npx prisma migrate dev --name init
-5. Start the Gateway
-code
-Bash
-download
-content_copy
-expand_less
-# From the root directory
+```
+
+### 5. Start the Gateway
+
+```bash
+# From root directory
 npm run dev
-📈 Portfolio Impact
+```
 
-Reduced Latency: Cached queries respond in ~30ms, compared to ~2000ms for live AI calls.
+## 📈 Portfolio Impact
 
-Cost Efficiency: Achieved up to 90% reduction in API spend for redundant customer support queries.
+ - **Reduced Latency:** Cached queries → ~30 ms (vs ~2000 ms live)
+ - **Cost Efficiency:** Up to 90% reduction in API spend for redundant customer support queries
+ - **System Integrity:** Cleanly handled CORS, SSE streaming, rate limiting in multi-container setup
 
-System Integrity: Successfully handled CORS, SSE Streaming, and Rate Limiting in a multi-container environment.
+--------------------------------------------------------------------------------------------------------------------------------
 
-Developed by [Your Name]
-Targeted for AI Engineering and Full-Stack Roles.
+Developed by **BEDAGYA BORDOLOI**
+Targeted for *AI Engineering and Full-Stack roles*
