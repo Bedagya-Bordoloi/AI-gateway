@@ -123,4 +123,5 @@ npm run dev
 --------------------------------------------------------------------------------------------------------------------------------
 
 Developed by **BEDAGYA BORDOLOI**
+
 Targeted for *AI Engineering and Full-Stack roles*
